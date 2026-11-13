@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Si-Manis — Pemantauan Harian & SBAR Ruang Intensif</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#f2f5f5;--surf:#fff;--inp:#f8fafa;--ink:#10272b;--mut:#587176;--line:#d5e0df;--acc:#0f766e;--acc2:#0b4a52;--on:#fff;--gold:#8f6f24;--ok:#1b7a4b;--warn:#a8680f;--bad:#b3261e;--okb:#e2f3ea;--warnb:#fbefd6;--badb:#fbe3df;--hd:#0b2227;
 --serif:"Cormorant Garamond",Georgia,serif;--sans:"DM Sans",system-ui,sans-serif;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -22,11 +25,14 @@ header{background:linear-gradient(120deg,var(--hd),#0f3a40);border-bottom:1px so
 .hw{max-width:1100px;margin:0 auto;padding:12px 18px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
 .brand h1{font-size:30px;color:#fff;letter-spacing:.01em}
 .brand p{margin:0;font-size:12px;color:#9fc3c0;max-width:46ch}
-.hc{display:flex;gap:8px;align-items:center}
+.hc{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .seg{display:flex;background:rgba(255,255,255,.08);border-radius:10px;padding:3px}
 .seg button{border:0;background:none;color:#bcd6d3;padding:7px 14px;border-radius:8px;font-weight:600;font-size:13px}
 .seg button[aria-pressed=true]{background:#e6f0ee;color:#0e2a2f}
-.ib{border:1px solid rgba(255,255,255,.25);background:none;color:#e6f0ee;border-radius:10px;padding:7px 12px;font-size:13px}
+.ib{border:1px solid rgba(255,255,255,.25);background:none;color:#e6f0ee;border-radius:10px;padding:7px 12px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.ib.sync-on{border-color:#35cdb9;background:rgba(53,205,185,.15);color:#86e3d5}
+.dot{width:8px;height:8px;border-radius:50%;background:#9ab1b6;display:inline-block}
+.sync-on .dot{background:#35cdb9;box-shadow:0 0 8px #35cdb9}
 .units{background:var(--surf);border-bottom:1px solid var(--line)}
 .uw{max-width:1100px;margin:0 auto;padding:0 18px;display:flex;overflow-x:auto;gap:2px}
 .uw button{border:0;background:none;padding:13px 14px;color:var(--mut);font-weight:600;white-space:nowrap;border-bottom:3px solid transparent}
@@ -81,33 +87,113 @@ th,td{text-align:left;padding:9px 10px 9px 0;border-bottom:1px solid var(--line)
 footer{max-width:1100px;margin:0 auto;padding:0 18px 30px;color:var(--mut);font-size:12.5px}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--hd);color:#fff;padding:11px 18px;border-radius:12px;font-size:14px;max-width:90vw;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 #toast.on{opacity:1}
-.pub{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--surf);border:1px solid var(--acc);border-radius:14px;padding:12px 16px;margin-top:22px}
-dialog{border:1px solid var(--line);border-radius:16px;background:var(--surf);color:var(--ink);max-width:460px;width:calc(100% - 32px);padding:22px}
-dialog::backdrop{background:rgba(7,21,26,.6)}
-dialog h2{font-size:28px;margin-bottom:10px}dialog h3{font-size:19px;margin:16px 0 4px}dialog ol{margin:0;padding-left:20px}dialog li{margin-bottom:4px}
+.pub{position:sticky;bottom:calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;gap:12px;align-items:center;background:var(--surf);border:1px solid var(--acc);border-radius:14px;padding:12px 16px;margin-top:22px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+dialog{border:1px solid var(--line);border-radius:20px;background:var(--surf);color:var(--ink);max-width:440px;width:calc(100% - 32px);padding:24px;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(7,21,26,.65);backdrop-filter:blur(2px)}
+dialog h2{font-size:26px;margin-bottom:8px;font-family:var(--sans);font-weight:700}
+dialog h3{font-size:19px;margin:16px 0 4px}
+dialog ol{margin:0;padding-left:20px}dialog li{margin-bottom:4px}
+.sync-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sync-head h2{margin:0;display:flex;align-items:center;gap:8px;font-size:21px}
+.close-x{background:none;border:0;font-size:22px;color:var(--mut);padding:4px 8px;line-height:1}
+.sync-form label{font-weight:600;color:var(--ink);font-size:13.5px;margin-top:14px;margin-bottom:6px}
+.sync-form input{background:#152224;color:#e6f0ee;border:1px solid #2b4246;padding:12px 14px;border-radius:10px;font-size:14px}
+.sync-form input::placeholder{color:#6f8b8e}
+.btn-blue{width:100%;background:#0284c7;color:#fff;border:0;padding:13px;border-radius:10px;font-weight:600;font-size:15px;margin-top:18px}
+.btn-blue:hover{background:#0369a1}
+.btn-reset{width:100%;background:#f1f5f9;color:#0f172a;border:1px solid #cbd5e1;padding:12px;border-radius:10px;font-weight:600;font-size:14.5px;margin-top:10px}
 .app [data-inst]{display:none!important}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<header><div class="hw">
-<div class="brand"><h1>Si-Manis</h1><p>Sistem pemantauan harian dan SBAR untuk perawatan intensif — RSUD RT. Notopuro Sidoarjo</p></div>
-<div class="hc"><button class="ib" data-inst>Pasang di HP</button><button class="ib" id="th" aria-label="Ganti mode terang atau gelap">Mode gelap</button>
-<div class="seg" role="group" aria-label="Portal"><button data-role="nurse">Portal perawat</button><button data-role="family">Portal keluarga</button></div></div>
-</div></header>
-<nav class="units"><div class="uw" id="units"></div></nav>
+
+<header>
+  <div class="hw">
+    <div class="brand">
+      <h1>Si-Manis</h1>
+      <p>Sistem pemantauan harian dan SBAR untuk perawatan intensif — RSUD RT. Notopuro Sidoarjo</p>
+    </div>
+    <div class="hc">
+      <button class="ib" id="btnSync"><span class="dot"></span> <span id="syncLabel">Sinkronisasi</span></button>
+      <button class="ib" data-inst>Pasang di HP</button>
+      <button class="ib" id="th">Mode gelap</button>
+      <div class="seg" role="group" aria-label="Pilih peran">
+        <button data-role="nurse" aria-pressed="true">Portal perawat</button>
+        <button data-role="family" aria-pressed="false">Portal keluarga</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="units" aria-label="Pilih unit ruangan">
+  <div class="uw" id="units"></div>
+</nav>
+
 <main id="app"></main>
-<footer>Si-Manis — RSUD RT. Notopuro Sidoarjo. Created by dr. Puguh Widagdo, SpPD, FINASIM bersama TIM IPIT. Data pasien di halaman ini adalah contoh dan tersimpan hanya selama halaman terbuka.</footer>
-<dialog id="im"><h2>Pasang Si-Manis di HP Anda</h2><p class="sub" style="margin:0">Buka cepat dari layar utama tanpa mengetik alamat, dan lebih hemat kuota.</p><h3>Android (Chrome, Edge, Samsung Internet)</h3><ol><li>Ketuk tombol titik tiga di pojok kanan atas browser.</li><li>Pilih "Tambahkan ke layar utama" atau "Instal aplikasi".</li><li>Konfirmasi, lalu ikon Si-Manis muncul di menu HP.</li></ol><h3>iPhone / iPad (Safari)</h3><ol><li>Buka tautan ini di Safari.</li><li>Ketuk tombol Bagikan di bagian bawah layar.</li><li>Gulir dan pilih "Tambah ke Layar Utama".</li><li>Ketuk "Tambah" di pojok kanan atas.</li></ol><div class="row" style="margin-top:18px"><button class="btn" id="imc">Mengerti</button></div></dialog>
-<div id="toast" role="status"></div>
+
+<footer>
+  Si-Manis — RSUD RT. Notopuro Sidoarjo. Created by dr. Puguh Widagdo, SpPD, FINASIM bersama TIM IPIT. <span id="syncFooter">Mode lokal (belum terhubung Supabase).</span>
+</footer>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- Dialog Instalasi PWA -->
+<dialog id="im">
+  <h2>Pasang Si-Manis di HP Anda</h2>
+  <p class="sub">Buka cepat dari layar utama tanpa mengetik alamat, dan lebih hemat kuota.</p>
+  <h3>Android (Chrome, Edge, Samsung Internet)</h3>
+  <ol>
+    <li>Ketuk tombol titik tiga di pojok kanan atas browser.</li>
+    <li>Pilih "Tambahkan ke layar utama" atau "Instal aplikasi".</li>
+    <li>Konfirmasi, lalu ikon Si-Manis muncul di menu HP.</li>
+  </ol>
+  <h3>iPhone / iPad (Safari)</h3>
+  <ol>
+    <li>Buka tautan ini di Safari.</li>
+    <li>Ketuk tombol Bagikan di bagian bawah layar.</li>
+    <li>Gulir dan pilih "Tambah ke Layar Utama".</li>
+    <li>Ketuk "Tambah" di pojok kanan atas.</li>
+  </ol>
+  <div style="margin-top:18px;text-align:right">
+    <button class="btn" id="imc">Mengerti</button>
+  </div>
+</dialog>
+
+<!-- Dialog Sinkronisasi Supabase -->
+<dialog id="syncModal">
+  <div class="sync-head">
+    <h2>☁️ Sinkronisasi Antar HP</h2>
+    <button class="close-x" id="closeSync" aria-label="Tutup">&times;</button>
+  </div>
+  <p class="sub" style="margin-bottom:14px;line-height:1.45">
+    Perawat, dokter, dan pasien membuka papan yang sama di HP berbeda. Gunakan <b>Kode Papan</b> yang sama di semua HP (contoh: <code>icu1-bed3</code> atau <code>rsud-ipit</code>).
+  </p>
+  <div class="sync-form">
+    <label>Supabase Project URL
+      <input id="sbUrl" type="url" placeholder="https://xxx.supabase.co" autocomplete="off">
+    </label>
+    <label>Anon (public) key
+      <input id="sbKey" type="text" placeholder="eyJhbGci..." autocomplete="off">
+    </label>
+    <label>Kode Papan (unik untuk ruangan/pasien)
+      <input id="sbBoard" type="text" placeholder="misal: icu1-bed3" autocomplete="off">
+    </label>
+    <button class="btn-blue" id="saveSync">Simpan & Hubungkan</button>
+    <button class="btn-reset" id="resetSync">Putuskan / Reset</button>
+  </div>
+</dialog>
+
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const CK=[['identitasVerified','Verifikasi gelang & identitas pasien','Cocokkan nomor rekam medis dan tanggal lahir.'],['vitalCheck','Pemeriksaan tanda vital berkala','Sesuai jadwal pemantauan ketat per jam.'],['vasoaktif','Evaluasi dosis obat vasoaktif/inotropik','Pantau reaksi obat penopang tensi dan jantung.'],['ventilation','Pemeriksaan mode ventilator / CPAP','Cek jalan napas dan posisi ETT.'],['suction','Suction & perawatan jalan napas','Bebaskan dahak atau lendir berkala.'],['nutrisi','Pemberian nutrisi (NGT/OGT/ASI)','Cek toleransi residu lambung.'],['balanceCairan','Balance cairan 24 jam','Input dibanding output urine/drain.'],['aksesVaskular','Perawatan infus / CVC / kateter','Paten dan bebas tanda infeksi.'],['sedasiNyeri','Evaluasi skala nyeri & sedasi','Pastikan pasien nyaman.'],['edukasiKeluarga','Edukasi & teach-back keluarga','Kondisi dijelaskan secara transparan.']];
 const VF=[['bp','Tekanan darah'],['hr','Nadi'],['rr','Napas'],['spo2','Saturasi O₂'],['temp','Suhu'],['gcs','Kesadaran (GCS)']];
 const ST={'high':'Tinggi','low':'Rendah','warning':'Waspada','normal':'Normal'};
+
 function P(unit,full,name,age,mrn,bed,pin,status,dx,nurse,upd,v,off,s,dev,att){const c={};CK.forEach(k=>c[k[0]]=!off.includes(k[0]));
 return{unit,unitFullName:full,name,age,mrn,bed,pin,status,diagnosis:dx,nurseInCharge:nurse,lastUpdated:upd,vitalSigns:{bp:v[0],hr:v[1],rr:v[2],spo2:v[3],temp:v[4],gcs:v[5]},checklist:c,sbar:{situation:s[0],background:s[1],assessment:s[2],recommendation:s[3],empathyNote:s[4]},medicalDevices:dev.map(d=>({name:d[0],desc:d[1]})),attachments:att||[]}}
+
 const PAT={
 'ICU 1':P('ICU 1','Intensive Care Unit 1','Bpk. Budi Santoso','54 tahun','RM-882910','Bed 03','1234','Pemantauan ketat','Pasca operasi bedah jantung & infeksi paru','Nrs. Anita, S.Kep','10 menit yang lalu',['125/80 mmHg','82 bpm','18 x/menit','98%','36.8 °C','E4V4M6 (sadar, sedasi ringan)'],[],['Kondisi Bapak Budi saat ini stabil di bawah pemantauan ketat tim medis ICU 1.','Beliau dirawat karena gangguan pernapasan dan pemulihan jantung pasca bedah.','Dalam 24 jam terakhir tanda vital terjaga baik dan sirkulasi terkontrol.','Target hari ini: menyesuaikan dosis obat penenang dan melatih bernapas mandiri.','Kami menjaga Bapak Budi 24 jam penuh.'],[['Ventilator','Alat bantu napas otomatis yang memberikan oksigen.'],['Monitor bedside EKG','Layar pantau kontinu detak jantung dan saturasi.']],[{id:1,name:'Hasil_Lab_Lengkap_Bpk_Budi.pdf',category:'Hasil lab',date:'08:15 WIB',size:'1,2 MB',url:'',lab:[['Hemoglobin (Hb)','10.2','g/dL','13.5 – 17.5','low'],['Leukosit (WBC)','14.500','/µL','4.500 – 11.000','high'],['Trombosit (PLT)','210.000','/µL','150.000 – 450.000','normal'],['Ureum','58','mg/dL','15 – 45','high'],['Kreatinin','1.1','mg/dL','0.7 – 1.3','normal']]}]),
 'ICU 2A':P('ICU 2A','Intensive Care Unit 2A (trauma & bedah)','Bpk. Darmawan Putro','41 tahun','RM-885102','Bed 01','1235','Pemantauan ketat','Cedera kepala sedang pasca kraniotomi','Nrs. Tri, S.Kep','15 menit yang lalu',['130/85 mmHg','78 bpm','16 x/menit','99%','36.7 °C','E3V3M5 (sadar ringan)'],['vasoaktif'],['Bapak Darmawan dalam pemantauan neurologis ketat pasca operasi di ICU 2A.','Dirawat pasca tindakan operasi cedera kepala akibat kecelakaan.','Tekanan intrakranial stabil, tidak demam, refleks pupil simetris.','Evaluasi respons kesadaran dan pertahankan posisi kepala elevasi 30 derajat.','Tim ICU 2A memantau perkembangan respons motorik secara kontinu.'],[['Monitor bedside EKG','Memantau tanda vital dan tekanan sirkulasi.'],['Syringe pump sedasi','Pemberian obat penenang dengan presisi tinggi.']]),
@@ -117,16 +203,176 @@ const PAT={
 'ICCU':P('ICCU','Intensive Coronary Care Unit','Bpk. Ahmad Dahlan','58 tahun','RM-901123','Bed 05','3456','Pemantauan ketat','Sindrom koroner akut (pasca pemasangan ring jantung)','Nrs. Dewi, S.Kep','5 menit yang lalu',['118/75 mmHg','68 bpm (sinus)','16 x/menit','97%','36.6 °C','E4V5M6 (sadar penuh)'],['ventilation','suction'],['Bapak Ahmad stabil pasca tindakan intervensi jantung.','Dirawat di ICCU agar irama dan aliran darah jantung tetap lancar pasca kateterisasi.','Irama jantung teratur, nyeri dada tidak ada, bekas tusukan bersih tanpa perdarahan.','Tirah baring total, hindari kecemasan, lanjutkan obat pelindung otot jantung.','Ketenangan emosi sangat membantu kestabilan irama jantung Bapak Ahmad.'],[['Monitor EKG kontinu','Merekam listrik jantung untuk mencegah gangguan irama.'],['Syringe pump antikoagulan','Memberikan obat pengencer darah dengan dosis presisi.']]),
 'NICU':P('NICU','Neonatal Intensive Care Unit','Bayi Ny. Siska (By. Kenzo)','5 hari (prematur 32 minggu)','RM-994110','Inkubator 02','4567','Pemantauan ketat','Prematuritas & respiratory distress syndrome (RDS)','Nrs. Maria, A.Md.Kep','15 menit yang lalu',['65/40 mmHg','142 bpm','48 x/menit','95%','36.9 °C (inkubator)','Aktif, menangis lemah'],['vasoaktif','sedasiNyeri'],['Bayi Kenzo stabil dan hangat di dalam inkubator dengan alat CPAP.','Lahir lebih awal sehingga paru membutuhkan dorongan napas ringan dan suhu lingkungan terjaga.','Suhu ideal (36,9 °C), minum ASI perah via selang lambung membaik (3 cc per 2 jam), bilirubin normal.','Lanjutkan ASI perah dari Bunda, fototerapi bila perlu, dan siapkan Metode Kanguru.','Suara dan ASI dari Bunda adalah obat paling berharga bagi si kecil.'],[['Inkubator penghangat','Ruang kaca steril yang dijaga hangat seperti dalam kandungan.'],['CPAP neonatus','Tekanan udara lembut ke hidung agar paru tidak menguncup.'],['OGT (selang minum)','Selang halus untuk mengalirkan ASI perah ke lambung.'],['Lampu fototerapi','Sinar biru khusus untuk memecah bilirubin berlebih.']]),
 'PICU':P('PICU','Pediatric Intensive Care Unit','Ananda Kevin','6 tahun','RM-661209','Bed 02','5678','Stabil','DHF grade III dengan dehidrasi','Nrs. Rizky, S.Kep','30 menit yang lalu',['105/70 mmHg','95 bpm','22 x/menit','99%','37.1 °C','E4V5M6 (sadar, kontak adekuat)'],['vasoaktif','ventilation','suction'],['Adik Kevin makin stabil, demam turun, dan semakin aktif.','Dirawat di PICU untuk pemantauan trombosit dan keseimbangan cairan akibat demam berdarah.','Trombosit naik bertahap, tidak ada perdarahan baru, nafsu makan membaik, buang air kecil lancar.','Infus diturunkan bertahap, beri nutrisi kesukaan anak, jaga waktu istirahat.','Kehadiran Ayah dan Bunda membawa mainan kesukaan sangat menenangkan Adik Kevin.'],[['Infusion pump cairan','Mengatur tetesan infus agar tidak kurang atau berlebih.'],['Pulse oximeter anak','Klip kecil di jari untuk memantau kadar oksigen.']])};
+
 const V='Siang (11.00 – 12.00 WIB) & sore (17.00 – 18.00 WIB)';
 const RULES={'ICU 1':['Wajib mencuci tangan dengan handrub sebelum dan sesudah menyentuh pasien.','Jam kunjung: '+V+'. Maksimal 2 orang bergantian.','Dilarang mengambil foto/video di dalam ruangan demi privasi seluruh pasien.','Bunyi alarm monitor adalah peringatan rutin perawat dan tidak selalu berarti darurat.'],'ICU 2A':['Area trauma & bedah: jaga ketenangan di sekitar bed pasien.','Jam kunjung: '+V+'.','Wajib memakai baju pelindung pengunjung yang disediakan perawat.','Hindari menyenggol selang infus atau kabel monitor.'],'ICU 2B':['Area isolasi respirasi: wajib masker N95/medis dan jubah isolasi.','Jam kunjung: '+V+'. Maksimal 1 penanggung jawab.','Cuci tangan 6 langkah sebelum dan sesudah keluar dari ruang isolasi.'],'HCU A':['Cuci tangan 6 langkah sebelum memasuki area tempat tidur.','Jam kunjung: siang (11.00 – 13.00 WIB) & sore (17.00 – 19.00 WIB).','Pasien didampingi 1 penanggung jawab utama secara berkala.','Ingatkan pasien untuk latihan napas dalam dan tidak banyak bergerak mendadak.'],'HCU B':['Perawatan pasca pembedahan: pastikan area bed bersih dan steril.','Jam kunjung: siang (11.00 – 13.00 WIB) & sore (17.00 – 19.00 WIB).','Segera panggil perawat jika pasien nyeri hebat atau balutan basah.'],'ICCU':['Jaga ketenangan ruangan; hindari topik yang memicu kecemasan pasien.','Jam kunjung: '+V+'.','Segera panggil perawat jika pasien nyeri dada, berdebar, atau sesak napas.'],'NICU':['Ayah/Bunda wajib melepas perhiasan dan mencuci tangan hingga siku sebelum masuk.','Bunda disarankan membawa ASI perah segar berlabel nama dan jam perah.','Latihan KMC (kontak kulit) mengikuti jadwal perawat.','Bicara dengan suara lembut di sekitar inkubator.'],'PICU':['Orang tua boleh membawa 1 benda kesayangan anak (boneka/buku) yang sudah dibersihkan.','Bicara dengan kalimat positif dan tenang kepada anak.','Jam damping orang tua mengikuti instruksi kepala ruangan.']};
+
 const S={adding:false,nf:{},role:'nurse',unit:'ICU 1',pub:structuredClone(PAT),draft:{},rules:structuredClone(RULES),ver:{},err:'',cat:'Hasil lab',
 labText:'Hemoglobin (Hb) | 12.0 | g/dL | 13.5 – 17.5 | low\nLeukosit (WBC) | 8.500 | /µL | 4.500 – 11.000 | normal\nGula darah sewaktu | 155 | mg/dL | < 140 | warning',
 qs:[{id:1,unit:'ICU 1',text:'Apakah Bapak Budi sudah bisa merespons saat dipanggil nama?',time:'08:30 WIB',answer:'Sudah, beliau mengangguk kecil saat kami sapa pagi ini.'},{id:2,unit:'NICU',text:'Berapa cc ASI perah yang perlu disiapkan untuk jadwal siang?',time:'09:15 WIB',answer:''}]};
+
 const D=()=>S.draft[S.unit]||(S.draft[S.unit]=structuredClone(S.pub[S.unit]));
 let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
+
+// --- SUPABASE REALTIME ENGINE ---
+let sbClient = null;
+let sbChannel = null;
+let sbCfg = JSON.parse(localStorage.getItem('simanis3_sb') || 'null');
+
+function updateSyncUI(connected, boardCode = '') {
+  const btn = $('#btnSync');
+  const lbl = $('#syncLabel');
+  const ftr = $('#syncFooter');
+  if (connected) {
+    btn.classList.add('sync-on');
+    lbl.textContent = 'Terhubung: ' + boardCode;
+    ftr.textContent = 'Tersinkronisasi real-time dengan Supabase (Kode Papan: ' + boardCode + ').';
+  } else {
+    btn.classList.remove('sync-on');
+    lbl.textContent = 'Sinkronisasi';
+    ftr.textContent = 'Mode lokal (belum terhubung Supabase).';
+  }
+}
+
+async function pushToSupabase(silent = false) {
+  if (!sbClient || !sbCfg || !sbCfg.board) return;
+  const payload = {
+    pub: S.pub,
+    rules: S.rules,
+    qs: S.qs
+  };
+  const { error } = await sbClient
+    .from('simanis_boards')
+    .upsert({
+      board_code: sbCfg.board,
+      unit_data: payload,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'board_code' });
+
+  if (error) {
+    console.error('Supabase Upsert Error:', error);
+    toast('Gagal mengirim ke server: ' + error.message);
+  } else if (!silent) {
+    toast('Tersinkronisasi ke semua HP (' + sbCfg.board + ').');
+  }
+}
+
+function applyRemoteData(data) {
+  if (!data || !data.unit_data) return;
+  const remote = data.unit_data;
+  if (remote.pub) {
+    S.pub = remote.pub;
+    // Perbarui draft unit aktif jika perawat sedang tidak mengetik di input
+    if (!document.activeElement || !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) {
+      S.draft[S.unit] = structuredClone(S.pub[S.unit]);
+    }
+  }
+  if (remote.rules) S.rules = remote.rules;
+  if (remote.qs) S.qs = remote.qs;
+  render();
+}
+
+async function initSupabase(url, key, board, isManual = false) {
+  try {
+    if (sbChannel) {
+      sbClient.removeChannel(sbChannel);
+      sbChannel = null;
+    }
+    sbClient = window.supabase.createClient(url, key);
+    sbCfg = { url, key, board };
+    localStorage.setItem('simanis3_sb', JSON.stringify(sbCfg));
+
+    // Ambil data awal dari papan tersebut
+    const { data, error } = await sbClient
+      .from('simanis_boards')
+      .select('*')
+      .eq('board_code', board)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (data && data.unit_data && Object.keys(data.unit_data).length > 0) {
+      applyRemoteData(data);
+      if (isManual) toast('Berhasil terhubung & memuat data papan "' + board + '".');
+    } else {
+      // Jika papan baru dan belum ada di database, inisialisasi dengan data saat ini
+      await pushToSupabase(true);
+      if (isManual) toast('Papan baru "' + board + '" dibuat & terhubung.');
+    }
+
+    // Dengarkan perubahan real-time dari HP lain
+    sbChannel = sbClient
+      .channel('board-' + board)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'simanis_boards', filter: 'board_code=eq.' + board },
+        (payload) => {
+          if (payload.new) {
+            applyRemoteData(payload.new);
+            toast('Pembaruan data diterima secara real-time.');
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          updateSyncUI(true, board);
+        }
+      });
+
+    updateSyncUI(true, board);
+  } catch (err) {
+    console.error(err);
+    updateSyncUI(false);
+    toast('Gagal terhubung ke Supabase. Periksa URL, Key, atau SQL.');
+  }
+}
+
+function disconnectSupabase() {
+  if (sbChannel && sbClient) {
+    sbClient.removeChannel(sbChannel);
+  }
+  sbClient = null;
+  sbChannel = null;
+  sbCfg = null;
+  localStorage.removeItem('simanis3_sb');
+  $('#sbUrl').value = '';
+  $('#sbKey').value = '';
+  $('#sbBoard').value = '';
+  updateSyncUI(false);
+  toast('Koneksi Supabase diputuskan.');
+}
+
+// Event listener untuk Modal Sinkronisasi
+$('#btnSync').addEventListener('click', () => {
+  if (sbCfg) {
+    $('#sbUrl').value = sbCfg.url || '';
+    $('#sbKey').value = sbCfg.key || '';
+    $('#sbBoard').value = sbCfg.board || '';
+  }
+  $('#syncModal').showModal();
+});
+$('#closeSync').addEventListener('click', () => $('#syncModal').close());
+$('#saveSync').addEventListener('click', async () => {
+  const url = $('#sbUrl').value.trim();
+  const key = $('#sbKey').value.trim();
+  const board = $('#sbBoard').value.trim().toLowerCase();
+  if (!url || !key || !board) {
+    toast('Harap isi Project URL, Anon Key, dan Kode Papan.');
+    return;
+  }
+  $('#syncModal').close();
+  await initSupabase(url, key, board, true);
+});
+$('#resetSync').addEventListener('click', () => {
+  disconnectSupabase();
+  $('#syncModal').close();
+});
+// --- END SUPABASE ENGINE ---
+
 const labTable=l=>`<div class="tw"><table><thead><tr><th>Parameter</th><th>Hasil</th><th>Nilai rujukan</th><th>Status</th></tr></thead><tbody>${l.map(r=>`<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b> ${esc(r[2])}</td><td>${esc(r[3])}</td><td><span class="st ${r[4]}">${ST[r[4]]||'Normal'}</span></td></tr>`).join('')}</tbody></table></div>`;
 function files(p,del){if(!p.attachments.length)return'<p class="sub">Belum ada dokumen yang diunggah.</p>';
 return p.attachments.map(a=>`<div class="fl"><div><b>${esc(a.name)}</b><br><small style="color:var(--mut)">${esc(a.category)} · ${esc(a.size)} · ${esc(a.date)}</small></div><div class="row">${a.url?`<a href="${a.url}" target="_blank" rel="noopener" download="${esc(a.name)}">Buka</a>`:''}${del?`<button class="btn s" data-act="del" data-id="${a.id}">Hapus</button>`:''}</div></div>${a.lab?labTable(a.lab):''}`).join('')}
+
 const flag=(p,k)=>{const v=p.vitalSigns[k]||'',n=parseFloat(v.replace(',','.')),kid=p.unit==='NICU'||p.unit==='PICU';
 if(k==='bp'&&!kid){const s=parseInt(v);return s>=180||s<90?2:s>=140?1:0}
 if(k==='hr'&&!kid)return n>130||n<45?2:n>110||n<55?1:0;
@@ -137,60 +383,75 @@ if(k==='gcs'){const m=v.match(/E(\d)V(\d)M(\d)/);if(!m)return 0;const t=+m[1]+ +
 return 0};
 const ribbon=p=>`<div class="rib">${VF.map(f=>{const x=flag(p,f[0]);return`<div class="${['','w','c'][x]}"><b>${esc(p.vitalSigns[f[0]])}</b><span>${f[1]}</span>${x?`<small>${x===2?'Perhatian tim medis':'Dipantau'}</small>`:''}</div>`}).join('')}</div>`;
 function banner(p){return`<div class="banner"><div><h2>${esc(p.name)}</h2><div class="meta">${esc(p.age)} · ${esc(p.mrn)} · ${esc(p.bed)} · ${esc(p.unitFullName)}</div><div class="meta">Diagnosis: ${esc(p.diagnosis)}</div></div><div style="text-align:right"><span class="pill ${p.status.startsWith('Pemantauan')?'k':''}">${esc(p.status)}</span><div class="meta">Perawat jaga: ${esc(p.nurseInCharge)}<br>Diperbarui ${esc(p.lastUpdated)}</div></div></div>`}
+
 function addForm(){const n=S.nf,f=(k,l,x)=>`<label>${l}<input data-n="${k}" value="${esc(n[k]||'')}" ${x||''}></label>`;
 return`<section><h3>Tambah pasien baru — ruang ${esc(S.unit)}</h3><p class="sub">Pasien baru menggantikan pasien yang saat ini tercatat di ruang ini.</p><div class="fg">${f('name','Nama pasien')}${f('age','Usia')}${f('mrn','Nomor rekam medis')}${f('bed','Bed / inkubator')}${f('pin','PIN akses keluarga (kosongkan untuk acak)','inputmode="numeric" maxlength="4" autocomplete="off"')}${f('dx','Diagnosis')}${f('nurse','Perawat jaga')}<label>Status klinis<select data-n="status">${['Stabil','Membaik','Pemantauan ketat'].map(o=>`<option${n.status===o?' selected':''}>${o}</option>`).join('')}</select></label>${VF.map(v=>f(v[0],v[1])).join('')}</div><div class="row" style="margin-top:10px"><button class="btn" data-act="addsave">Daftarkan pasien</button><button class="btn s" data-act="addcancel">Batal</button></div></section>`}
+
 function nurse(){const p=D(),u=S.unit,rl=S.rules[u]||[],qs=S.qs.filter(q=>q.unit===u),cc=p.custom||[],done=CK.filter(k=>p.checklist[k[0]]).length+cc.filter(c=>c.done).length;
 if(S.adding)return addForm();
 return banner(p)+`<div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn s" data-act="add">Tambah pasien baru</button></div><section><h3>Tanda vital & status</h3><p class="sub">Isi nilai terbaru. Keluarga melihatnya setelah Anda menekan Publikasikan.</p>
 <div class="fg"><label>Status klinis<select data-b="status">${['Stabil','Membaik','Pemantauan ketat'].map(o=>`<option${p.status===o?' selected':''}>${o}</option>`).join('')}</select></label>${VF.map(f=>`<label>${f[1]}<input data-b="vitalSigns.${f[0]}" value="${esc(p.vitalSigns[f[0]])}"></label>`).join('')}<label>PIN akses keluarga (4 angka, hanya perawat yang dapat mengubah)<input data-b="pin" inputmode="numeric" maxlength="4" autocomplete="off" value="${esc(p.pin)}"></label></div></section>
-<div class="g2"><div><section><h3>Dokumen & hasil lab</h3><p class="sub">PDF, PNG, atau JPG (maks. 10 MB). Terbaca langsung oleh keluarga.</p>
+<div class="g2"><div><section><h3>Dokumen & hasil lab</h3><p class="sub">PDF, PNG, atau JPG (maks. 2 MB untuk sinkronisasi cepat). Terbaca langsung oleh keluarga.</p>
 <div class="fg"><label>Kategori<select id="cat">${['Hasil lab','Grafik vital sign','Radiologi/scan','Dokumen lainnya'].map(o=>`<option${S.cat===o?' selected':''}>${o}</option>`).join('')}</select></label><label>Pilih file<input type="file" id="file" accept=".pdf,.png,.jpg,.jpeg"></label></div>
 <label>Parameter lab untuk file kategori Hasil lab (satu per baris: nama | hasil | satuan | rujukan | normal/high/low/warning)<textarea id="lab" rows="4">${esc(S.labText)}</textarea></label>${files(p,true)}</section></div>
 <div><section><h3>Checklist perawatan harian</h3><p class="sub">${done} dari ${CK.length+cc.length} tindakan selesai.</p>${CK.map(k=>`<button class="ck" role="checkbox" aria-checked="${!!p.checklist[k[0]]}" data-act="ck" data-k="${k[0]}"><i>${p.checklist[k[0]]?'✓':''}</i><span><b>${k[1]}</b><small>${k[2]}</small></span></button>`).join('')}${cc.map(c=>`<div class="row" style="border-top:1px solid var(--line)"><button class="ck" style="border-top:0" role="checkbox" aria-checked="${c.done}" data-act="cck" data-id="${c.id}"><i>${c.done?'✓':''}</i><span><b>${esc(c.label)}</b><small>Aturan tambahan</small></span></button><button class="btn s" data-act="cdel" data-id="${c.id}" aria-label="Hapus aturan">Hapus</button></div>`).join('')}<div class="row" style="margin-top:12px"><input id="nc" placeholder="Tambah aturan checklist baru"><button class="btn s" data-act="cadd">Tambah</button></div></section></div></div>
 <div class="g2"><div><section><h3>Tata tertib & jam kunjung</h3><p class="sub">Tampil otomatis di portal keluarga ruang ${esc(u)}.</p>${rl.map((r,i)=>`<div class="row" style="margin-bottom:8px"><input data-r="${i}" value="${esc(r)}"><button class="btn s" data-act="rdel" data-i="${i}" aria-label="Hapus poin">Hapus</button></div>`).join('')}<div class="row"><input id="nr" placeholder="Tambah aturan baru"><button class="btn s" data-act="radd">Tambah</button></div></section></div>
 <div><section><h3>Pertanyaan dari keluarga (${esc(u)})</h3>${qs.length?qs.map(q=>`<div class="q"><b>${esc(q.text)}</b><br><small style="color:var(--mut)">${esc(q.time)}</small>${q.answer?`<div class="ans"><b>Jawaban perawat:</b> ${esc(q.answer)}</div>`:`<div class="row" style="margin-top:8px"><input data-rep="${q.id}" placeholder="Tulis jawaban"><button class="btn s" data-act="ans" data-id="${q.id}">Kirim</button></div>`}</div>`).join(''):'<p class="sub">Belum ada pertanyaan dari keluarga untuk unit ini.</p>'}</section></div></div>
 <section><h3>Narasi SBAR dalam bahasa awam</h3><p class="sub">Tulis seperti berbicara kepada keluarga: jelas, hangat, tanpa istilah teknis.</p><div class="fg">${[['situation','Kondisi saat ini (Situation)'],['background','Latar belakang (Background)'],['assessment','Evaluasi (Assessment)'],['recommendation','Rencana selanjutnya (Recommendation)'],['empathyNote','Pesan dukungan tim medis']].map(f=>`<label>${f[1]}<textarea data-b="sbar.${f[0]}">${esc(p.sbar[f[0]])}</textarea></label>`).join('')}</div></section>
-<div class="pub"><span>Perubahan terlihat oleh keluarga setelah dipublikasikan.</span><button class="btn big" data-act="pub">Publikasikan ke portal keluarga</button></div>`}
+<div class="pub"><span>Perubahan terlihat oleh keluarga di HP lain setelah dipublikasikan.</span><button class="btn big" data-act="pub">Publikasikan ke portal keluarga</button></div>`}
+
 function family(){const u=S.unit,p=S.pub[u];
 if(!S.ver[u])return`<div class="gate"><h2>Portal keluarga ${esc(u)}</h2><p class="sub">Masukkan PIN dari perawat jaga untuk membuka laporan pasien.</p><input id="pin" inputmode="numeric" maxlength="4" autocomplete="off" aria-label="PIN akses"><div class="err">${esc(S.err)}</div><button class="btn big" data-act="pin">Buka laporan pasien</button><p class="sub" style="margin-top:16px">Belum punya PIN? Tanyakan di counter perawat ruangan.</p><button class="btn s" data-inst>Pasang aplikasi di HP Anda</button></div>`;
 const sb=[['situation','Kondisi saat ini'],['background','Latar belakang'],['assessment','Perubahan yang dievaluasi'],['recommendation','Rencana perawatan selanjutnya']],qs=S.qs.filter(q=>q.unit===u);
-const labs=p.attachments.filter(a=>a.lab);
 return banner(p)+ribbon(p)+`<section><h3>Laporan ringkasan dokter & perawat</h3><p class="sub">Disusun dalam format SBAR dengan bahasa yang mudah dipahami.</p>${sb.map(f=>`<div class="sb"><h3>${f[1]}</h3><p>${esc(p.sbar[f[0]])}</p></div>`).join('')}<div class="note">${esc(p.sbar.empathyNote)}</div></section>
 <section><h3>Dokumen & hasil pemeriksaan</h3><p class="sub">Status warna: merah berarti di luar rujukan, kuning waspada, hijau normal.</p>${files(p,false)}</section>
 <div class="g2"><div><section><h3>Alat medis yang terpasang</h3><p class="sub">Penjelasan singkat untuk keluarga.</p>${p.medicalDevices.map(d=>`<div class="dev"><b>${esc(d.name)}</b><span>${esc(d.desc)}</span></div>`).join('')}</section></div>
 <div><section><h3>Tata tertib ruang ${esc(u)}</h3><p class="sub">Mohon dipatuhi demi keselamatan pasien.</p>${(S.rules[u]||[]).map(r=>`<div class="dev">${esc(r)}</div>`).join('')}</section></div></div>
 <section><h3>Kirim pertanyaan kepada perawat jaga</h3><p class="sub">Dijawab saat jam kunjung atau serah terima.</p><div class="row"><input id="nq" placeholder="Tulis pertanyaan Anda"><button class="btn" data-act="ask">Kirim</button></div>${qs.map(q=>`<div class="q"><b>${esc(q.text)}</b><br><small style="color:var(--mut)">${esc(q.time)}</small>${q.answer?`<div class="ans"><b>Jawaban perawat:</b> ${esc(q.answer)}</div>`:'<div class="sub" style="margin:6px 0 0">Menunggu jawaban perawat.</div>'}</div>`).join('')}</section>`}
+
 function render(){document.querySelectorAll('[data-role]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.role===S.role));
 $('#units').innerHTML=Object.keys(PAT).map(u=>`<button data-unit="${u}" aria-pressed="${u===S.unit}">${u}</button>`).join('');
 $('#app').innerHTML=S.role==='nurse'?nurse():family()}
+
 function setPath(o,path,v){const k=path.split('.');while(k.length>1)o=o[k.shift()];o[k[0]]=v}
 document.addEventListener('input',e=>{const t=e.target;
 if(t.dataset.b)setPath(D(),t.dataset.b,t.value);
 else if(t.dataset.r!==undefined)S.rules[S.unit][+t.dataset.r]=t.value;
 else if(t.dataset.n)S.nf[t.dataset.n]=t.value;
 else if(t.id==='lab')S.labText=t.value});
+
 document.addEventListener('change',e=>{const t=e.target;
 if(t.id==='cat'){S.cat=t.value;return}
 if(t.id==='file'&&t.files[0]){const f=t.files[0];
 if(!['application/pdf','image/png','image/jpeg'].includes(f.type)){toast('Format tidak didukung. Unggah PDF, PNG, atau JPG.');t.value='';return}
-if(f.size>10*1048576){toast('Ukuran file melebihi 10 MB.');t.value='';return}
+if(f.size>2*1048576){toast('Untuk sinkronisasi antar HP, ukuran file maksimal 2 MB.');t.value='';return}
 const lab=S.cat==='Hasil lab'?S.labText.split('\n').map(l=>l.split('|').map(x=>x.trim())).filter(r=>r.length>=4&&r[0]).map(r=>[r[0],r[1],r[2],r[3],ST[r[4]]?r[4]:'normal']):null;
-D().attachments.unshift({id:Date.now(),name:f.name,category:S.cat,date:'Baru saja',size:(f.size/1048576).toFixed(2).replace('.',',')+' MB',url:URL.createObjectURL(f),lab:lab&&lab.length?lab:null});
-toast('File '+f.name+' ditambahkan. Publikasikan agar terlihat oleh keluarga.');render()}});
-document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+const reader=new FileReader();
+reader.onload=()=>{
+  D().attachments.unshift({id:Date.now(),name:f.name,category:S.cat,date:'Baru saja',size:(f.size/1048576).toFixed(2).replace('.',',')+' MB',url:reader.result,lab:lab&&lab.length?lab:null});
+  toast('File '+f.name+' ditambahkan. Tekan Publikasikan agar tampil di HP keluarga.');
+  render();
+};
+reader.readAsDataURL(f);
+}});
+
+document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
 if(b.dataset.inst!==undefined){if(dp){dp.prompt();dp.userChoice.then(()=>{dp=null});}else $('#im').showModal();return}
 if(b.id==='imc'){$('#im').close();return}
 if(b.id==='th'){const r=document.documentElement,dk=getComputedStyle(r).getPropertyValue('--bg').trim()==='#0a1316';r.dataset.theme=dk?'light':'dark';b.textContent=dk?'Mode gelap':'Mode terang';return}
 if(b.dataset.role){S.role=b.dataset.role;render();return}
 if(b.dataset.unit){S.unit=b.dataset.unit;S.err='';render();return}
 const a=b.dataset.act;if(!a)return;const p=D();
+
 if(a==='add'){S.adding=true;S.nf={status:'Pemantauan ketat',nurse:p.nurseInCharge,bp:'120/80 mmHg',hr:'80 bpm',rr:'18 x/menit',spo2:'98%',temp:'36.5 °C',gcs:'E4V5M6 (sadar penuh)'}}
 if(a==='addcancel')S.adding=false;
 if(a==='addsave'){const n=S.nf,u=S.unit;if(!n.name||!n.mrn){toast('Isi nama pasien dan nomor rekam medis.');return}
 if(n.pin&&!/^\d{4}$/.test(n.pin)){toast('PIN harus 4 angka.');return}
 const pin=n.pin||String(1000+Math.floor(Math.random()*9000));
 S.pub[u]=P(u,p.unitFullName,n.name,n.age||'-',n.mrn.startsWith('RM-')?n.mrn:'RM-'+n.mrn,n.bed||'Bed 01',pin,n.status,n.dx||'Perawatan intensif',n.nurse||'Perawat jaga','baru saja didaftarkan',[n.bp,n.hr,n.rr,n.spo2,n.temp,n.gcs],['vasoaktif','ventilation','suction'],['Pasien '+n.name+' baru masuk ke ruang '+u+'.','Diagnosis masuk: '+(n.dx||'dalam pengamatan ketat')+'.','Tanda vital awal dalam pemantauan rutin tim perawat.','Observasi ketat 24 jam dan sosialisasi tata tertib kepada keluarga.','Tim medis siap memberikan perawatan intensif terbaik 24 jam.'],[['Monitor bedside EKG','Memantau irama jantung, tensi, dan saturasi oksigen.'],['Infus IV line','Jalur cairan dan obat.']]);
-delete S.draft[u];S.ver[u]=false;S.adding=false;toast(n.name+' terdaftar di ruang '+u+'. PIN keluarga: '+pin)}
+delete S.draft[u];S.ver[u]=false;S.adding=false;toast(n.name+' terdaftar di ruang '+u+'. PIN keluarga: '+pin);
+await pushToSupabase(true);
+}
 if(a==='cadd'){const i=$('#nc');if(!i.value.trim())return;(p.custom=p.custom||[]).push({id:Date.now(),label:i.value.trim(),done:false});toast('Aturan checklist ditambahkan.')}
 if(a==='cck'){const c=p.custom.find(x=>x.id==b.dataset.id);c.done=!c.done}
 if(a==='cdel'){p.custom=p.custom.filter(x=>x.id!=b.dataset.id);toast('Aturan checklist dihapus.')}
@@ -198,18 +459,34 @@ if(a==='ck')p.checklist[b.dataset.k]=!p.checklist[b.dataset.k];
 if(a==='del'){p.attachments=p.attachments.filter(x=>x.id!=b.dataset.id);toast('Berkas dihapus.')}
 if(a==='radd'){const i=$('#nr');if(!i.value.trim())return;S.rules[S.unit].push(i.value.trim());toast('Aturan ditambahkan.')}
 if(a==='rdel'){S.rules[S.unit].splice(+b.dataset.i,1);toast('Aturan dihapus.')}
-if(a==='ans'){const i=document.querySelector('[data-rep="'+b.dataset.id+'"]');if(!i.value.trim())return;S.qs.find(q=>q.id==b.dataset.id).answer=i.value.trim();toast('Jawaban terkirim ke keluarga.')}
+if(a==='ans'){const i=document.querySelector('[data-rep="'+b.dataset.id+'"]');if(!i.value.trim())return;S.qs.find(q=>q.id==b.dataset.id).answer=i.value.trim();toast('Jawaban terkirim ke keluarga.');await pushToSupabase(true);}
 if(a==='pub'){if(!/^\d{4}$/.test(p.pin||'')){toast('PIN harus 4 angka.');return}
 if(p.pin!==S.pub[S.unit].pin)S.ver[S.unit]=false;
-p.lastUpdated='baru saja dipublikasikan';S.pub[S.unit]=structuredClone(p);toast('Data '+S.unit+' dipublikasikan ke portal keluarga.')}
+const nowStr = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' WIB';
+p.lastUpdated='pukul ' + nowStr;
+S.pub[S.unit]=structuredClone(p);
+toast('Data '+S.unit+' dipublikasikan ke portal keluarga.');
+await pushToSupabase(false);
+}
 if(a==='pin'){const v=$('#pin').value;if(v===S.pub[S.unit].pin){S.ver[S.unit]=true;S.err=''}else S.err='PIN tidak sesuai. Tanyakan kepada perawat jaga.'}
-if(a==='ask'){const i=$('#nq');if(!i.value.trim())return;S.qs.unshift({id:Date.now(),unit:S.unit,text:i.value.trim(),time:'Baru saja',answer:''});toast('Pertanyaan terkirim ke perawat.')}
+if(a==='ask'){const i=$('#nq');if(!i.value.trim())return;
+const nowStr = new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) + ' WIB';
+S.qs.unshift({id:Date.now(),unit:S.unit,text:i.value.trim(),time:nowStr,answer:''});
+toast('Pertanyaan terkirim ke perawat.');
+await pushToSupabase(true);
+}
 render()});
+
 let dp=null;
 addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e});
 addEventListener('appinstalled',()=>{dp=null;document.documentElement.classList.add('app');toast('Si-Manis berhasil dipasang di HP Anda.')});
 if(matchMedia('(display-mode: standalone)').matches||navigator.standalone)document.documentElement.classList.add('app');
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='nc')document.querySelector('[data-act=cadd]').click();if(e.key==='Enter'&&e.target.id==='pin')document.querySelector('[data-act=pin]').click()});
+
+// Auto-connect jika sebelumnya sudah pernah menyimpan kredensial Supabase di HP ini
+if (sbCfg && sbCfg.url && sbCfg.key && sbCfg.board) {
+  initSupabase(sbCfg.url, sbCfg.key, sbCfg.board, false);
+}
 render();
 </script>
 </body>
